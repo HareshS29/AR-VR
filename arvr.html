@@ -1,4 +1,6 @@
-<!DOCTYPE html>
+<button id="startButton">
+            🚀 Start VR Experience
+        </button><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -89,7 +91,7 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        #fileInput {
+        #startButton {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -106,13 +108,9 @@
             transition: all 0.3s ease;
         }
         
-        #fileInput:hover {
+        #startButton:hover {
             transform: translate(-50%, -50%) scale(1.05);
             box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-        }
-        
-        input[type="file"] {
-            display: none;
         }
         
         #loadingScreen {
@@ -157,10 +155,7 @@
             <p>Loading your 360° experience...</p>
         </div>
         
-        <label for="videoFile" id="fileInput">
-            📱 Select Your 360° Video
-        </label>
-        <input type="file" id="videoFile" accept="video/*">
+
         
         <div id="instructions" class="hidden">
             <p>🔄 Move your device or drag to look around • 📱 Works best on mobile</p>
@@ -174,6 +169,9 @@
     </div>
 
     <script>
+        // Replace 'your-video.mp4' with the actual filename of your 360° video
+        const VIDEO_PATH = 'Trimmed.mp4';
+        
         let scene, camera, renderer, sphere, video, texture;
         let isPlaying = false;
         let gyroEnabled = false;
@@ -185,8 +183,7 @@
         let alpha = 0, beta = 0, gamma = 0;
         let deviceOrientationSupported = false;
         
-        const fileInput = document.getElementById('videoFile');
-        const fileButton = document.getElementById('fileInput');
+        const startButton = document.getElementById('startButton');
         const playPauseBtn = document.getElementById('playPause');
         const resetViewBtn = document.getElementById('resetView');
         const toggleGyroBtn = document.getElementById('toggleGyro');
@@ -209,16 +206,17 @@
             camera.position.set(0, 0, 0);
         }
         
-        // Load and setup video
-        function setupVideo(file) {
+        // Load and setup video from file path
+        function setupVideo() {
             loadingScreen.classList.remove('hidden');
-            fileButton.style.display = 'none';
+            startButton.style.display = 'none';
             
             video = document.createElement('video');
-            video.src = URL.createObjectURL(file);
+            video.src = VIDEO_PATH;
             video.crossOrigin = 'anonymous';
             video.loop = true;
             video.muted = true; // Required for autoplay on mobile
+            video.playsInline = true; // Important for iOS
             
             video.addEventListener('loadeddata', () => {
                 texture = new THREE.VideoTexture(video);
@@ -234,7 +232,22 @@
                 instructions.classList.remove('hidden');
                 controls.classList.remove('hidden');
                 
+                // Auto-play the video
+                video.play().then(() => {
+                    isPlaying = true;
+                    playPauseBtn.textContent = '⏸️';
+                }).catch(() => {
+                    // If autoplay fails, show play button
+                    playPauseBtn.textContent = '▶️';
+                });
+                
                 animate();
+            });
+            
+            video.addEventListener('error', (e) => {
+                loadingScreen.classList.add('hidden');
+                alert('Error loading video. Make sure "' + VIDEO_PATH + '" exists in your repository.');
+                startButton.style.display = 'block';
             });
             
             video.load();
@@ -336,9 +349,11 @@
         }
         
         // Event listeners
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files[0]) {
-                setupVideo(e.target.files[0]);
+        startButton.addEventListener('click', () => {
+            setupVideo();
+            // Request orientation permission when starting
+            if (/Mobi|Android/i.test(navigator.userAgent)) {
+                requestOrientationPermission();
             }
         });
         
