@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° VR Video Experience</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+        }
+        
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        #playPause {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #fileInput {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 200;
+            transition: all 0.3s ease;
+        }
+        
+        #fileInput:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        #loadingScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #000428 0%, #004e92 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 150;
+            color: white;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="loadingScreen" class="hidden">
+            <div class="spinner"></div>
+            <p>Loading your 360° experience...</p>
+        </div>
+        
+        <label for="videoFile" id="fileInput">
+            📱 Select Your 360° Video
+        </label>
+        <input type="file" id="videoFile" accept="video/*">
+        
+        <div id="instructions" class="hidden">
+            <p>🔄 Move your device or drag to look around • 📱 Works best on mobile</p>
+        </div>
+        
+        <div id="controls" class="hidden">
+            <button id="playPause">▶️</button>
+            <button id="resetView">🎯 Reset View</button>
+            <button id="toggleGyro">📱 Gyro: OFF</button>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, sphere, video, texture;
+        let isPlaying = false;
+        let gyroEnabled = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let currentRotationX = 0, currentRotationY = 0;
+        
+        // Device orientation variables
+        let alpha = 0, beta = 0, gamma = 0;
+        let deviceOrientationSupported = false;
+        
+        const fileInput = document.getElementById('videoFile');
+        const fileButton = document.getElementById('fileInput');
+        const playPauseBtn = document.getElementById('playPause');
+        const resetViewBtn = document.getElementById('resetView');
+        const toggleGyroBtn = document.getElementById('toggleGyro');
+        const instructions = document.getElementById('instructions');
+        const controls = document.getElementById('controls');
+        const loadingScreen = document.getElementById('loadingScreen');
+        
+        // Initialize Three.js scene
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Create sphere geometry (inverted for 360° viewing)
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            geometry.scale(-1, 1, 1); // Invert sphere
+            
+            camera.position.set(0, 0, 0);
+        }
+        
+        // Load and setup video
+        function setupVideo(file) {
+            loadingScreen.classList.remove('hidden');
+            fileButton.style.display = 'none';
+            
+            video = document.createElement('video');
+            video.src = URL.createObjectURL(file);
+            video.crossOrigin = 'anonymous';
+            video.loop = true;
+            video.muted = true; // Required for autoplay on mobile
+            
+            video.addEventListener('loadeddata', () => {
+                texture = new THREE.VideoTexture(video);
+                texture.minFilter = THREE.LinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+                
+                const material = new THREE.MeshBasicMaterial({ map: texture });
+                sphere = new THREE.Mesh(new THREE.SphereGeometry(500, 60, 40), material);
+                sphere.geometry.scale(-1, 1, 1);
+                scene.add(sphere);
+                
+                loadingScreen.classList.add('hidden');
+                instructions.classList.remove('hidden');
+                controls.classList.remove('hidden');
+                
+                animate();
+            });
+            
+            video.load();
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Smooth camera rotation
+            currentRotationX += (targetRotationX - currentRotationX) * 0.05;
+            currentRotationY += (targetRotationY - currentRotationY) * 0.05;
+            
+            if (gyroEnabled && deviceOrientationSupported) {
+                // Use device orientation for rotation
+                camera.rotation.x = beta * Math.PI / 180;
+                camera.rotation.y = alpha * Math.PI / 180;
+                camera.rotation.z = gamma * Math.PI / 180;
+            } else {
+                // Use mouse/touch for rotation
+                camera.rotation.y = currentRotationX;
+                camera.rotation.x = currentRotationY;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Mouse controls
+        let isMouseDown = false;
+        let lastMouseX = 0, lastMouseY = 0;
+        
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (!isMouseDown) return;
+            
+            const deltaX = e.clientX - lastMouseX;
+            const deltaY = e.clientY - lastMouseY;
+            
+            targetRotationX -= deltaX * 0.005;
+            targetRotationY -= deltaY * 0.005;
+            targetRotationY = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationY));
+            
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        
+        renderer.domElement.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+        
+        // Touch controls
+        let lastTouchX = 0, lastTouchY = 0;
+        
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            lastTouchX = e.touches[0].clientX;
+            lastTouchY = e.touches[0].clientY;
+        });
+        
+        renderer.domElement.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const deltaX = e.touches[0].clientX - lastTouchX;
+            const deltaY = e.touches[0].clientY - lastTouchY;
+            
+            targetRotationX -= deltaX * 0.005;
+            targetRotationY -= deltaY * 0.005;
+            targetRotationY = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationY));
+            
+            lastTouchX = e.touches[0].clientX;
+            lastTouchY = e.touches[0].clientY;
+        });
+        
+        // Device orientation
+        function handleDeviceOrientation(e) {
+            alpha = e.alpha || 0;
+            beta = e.beta || 0;
+            gamma = e.gamma || 0;
+        }
+        
+        // Request device orientation permission (iOS 13+)
+        function requestOrientationPermission() {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            window.addEventListener('deviceorientation', handleDeviceOrientation);
+                            deviceOrientationSupported = true;
+                        }
+                    });
+            } else if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', handleDeviceOrientation);
+                deviceOrientationSupported = true;
+            }
+        }
+        
+        // Event listeners
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                setupVideo(e.target.files[0]);
+            }
+        });
+        
+        playPauseBtn.addEventListener('click', () => {
+            if (video) {
+                if (isPlaying) {
+                    video.pause();
+                    playPauseBtn.textContent = '▶️';
+                } else {
+                    video.play();
+                    playPauseBtn.textContent = '⏸️';
+                }
+                isPlaying = !isPlaying;
+            }
+        });
+        
+        resetViewBtn.addEventListener('click', () => {
+            targetRotationX = 0;
+            targetRotationY = 0;
+            currentRotationX = 0;
+            currentRotationY = 0;
+        });
+        
+        toggleGyroBtn.addEventListener('click', () => {
+            if (!deviceOrientationSupported) {
+                requestOrientationPermission();
+            }
+            gyroEnabled = !gyroEnabled;
+            toggleGyroBtn.textContent = `📱 Gyro: ${gyroEnabled ? 'ON' : 'OFF'}`;
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+        
+        // Initialize
+        init();
+        
+        // Auto-request orientation permission on mobile
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            setTimeout(requestOrientationPermission, 1000);
+        }
+    </script>
+</body>
+</html>
