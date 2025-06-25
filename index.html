@@ -158,7 +158,8 @@
 
         
         <div id="instructions" class="hidden">
-            <p>🔄 Move your device or drag to look around • 📱 Works best on mobile</p>
+            <p>🔄 Move your device or drag to look around • 📱 Works best on mobile<br>
+            <small>Large video file loading from Google Drive - please be patient</small></p>
         </div>
         
         <div id="controls" class="hidden">
@@ -176,8 +177,8 @@
         // 4. Extract the FILE_ID (long string between /d/ and /view)
         // 5. Replace YOUR_FILE_ID below with your actual file ID
         
-        const GOOGLE_DRIVE_FILE_ID = '1bLEotdGvu33yDNc1QaWZXbs4fzW8txjZ';
-        const VIDEO_PATH = `https://drive.google.com/file/d/1bLEotdGvu33yDNc1QaWZXbs4fzW8txjZ/view?usp=sharing`;
+        const GOOGLE_DRIVE_FILE_ID = 'YOUR_FILE_ID';
+        const VIDEO_PATH = `https://drive.google.com/uc?export=download&id=${GOOGLE_DRIVE_FILE_ID}`;
         
         let scene, camera, renderer, sphere, video, texture;
         let isPlaying = false;
@@ -215,23 +216,42 @@
         
         // Load and setup video from Google Drive
         function setupVideo() {
+            console.log('Setup video called');
+            console.log('File ID:', 1bLEotdGvu33yDNc1QaWZXbs4fzW8txjZ);
+            console.log('Video path:', VIDEO_PATH);
+            
             if (GOOGLE_DRIVE_FILE_ID === 'YOUR_FILE_ID') {
-                alert('Please replace YOUR_FILE_ID with your actual Google Drive file ID in the code!');
+                alert('❌ Please replace YOUR_FILE_ID with your actual Google Drive file ID in the code!\n\nSteps:\n1. Upload video to Google Drive\n2. Share → Anyone with link\n3. Copy the file ID from the link\n4. Replace YOUR_FILE_ID in the code');
                 return;
             }
             
             loadingScreen.classList.remove('hidden');
             startButton.style.display = 'none';
+            console.log('Loading screen shown, start button hidden');
             
             video = document.createElement('video');
             video.src = VIDEO_PATH;
             video.crossOrigin = 'anonymous';
             video.loop = true;
-            video.muted = true; // Required for autoplay on mobile
-            video.playsInline = true; // Important for iOS
-            video.preload = 'metadata'; // Only load metadata initially for large files
+            video.muted = true;
+            video.playsInline = true;
+            video.preload = 'metadata';
+            
+            console.log('Video element created with src:', video.src);
+            
+            video.addEventListener('loadstart', () => {
+                console.log('✅ Video loading started...');
+            });
+            
+            video.addEventListener('loadedmetadata', () => {
+                console.log('✅ Video metadata loaded');
+                console.log('Duration:', video.duration);
+                console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+            });
             
             video.addEventListener('loadeddata', () => {
+                console.log('✅ Video data loaded, creating 3D scene...');
+                
                 texture = new THREE.VideoTexture(video);
                 texture.minFilter = THREE.LinearFilter;
                 texture.magFilter = THREE.LinearFilter;
@@ -246,27 +266,62 @@
                 instructions.classList.remove('hidden');
                 controls.classList.remove('hidden');
                 
+                console.log('✅ 3D scene created, UI updated');
+                
                 // Auto-play the video
                 video.play().then(() => {
+                    console.log('✅ Video auto-play successful');
                     isPlaying = true;
                     playPauseBtn.textContent = '⏸️';
-                }).catch(() => {
-                    // If autoplay fails, show play button
+                }).catch((error) => {
+                    console.log('❌ Auto-play failed:', error);
                     playPauseBtn.textContent = '▶️';
                 });
                 
                 animate();
             });
             
-            video.addEventListener('error', (e) => {
-                loadingScreen.classList.add('hidden');
-                console.error('Video error:', e);
-                alert('Error loading video from Google Drive. Please check:\n1. File ID is correct\n2. Video is shared publicly\n3. Google Drive link is accessible');
-                startButton.style.display = 'block';
+            video.addEventListener('canplay', () => {
+                console.log('✅ Video can start playing');
             });
             
-            video.addEventListener('loadstart', () => {
-                console.log('Started loading video from Google Drive...');
+            video.addEventListener('canplaythrough', () => {
+                console.log('✅ Video can play through without buffering');
+            });
+            
+            video.addEventListener('error', (e) => {
+                console.error('❌ Video error:', e);
+                console.error('Error details:', video.error);
+                loadingScreen.classList.add('hidden');
+                
+                let errorMessage = '❌ Error loading video from Google Drive.\n\n';
+                
+                if (video.error) {
+                    switch(video.error.code) {
+                        case 1:
+                            errorMessage += 'MEDIA_ERR_ABORTED: Video loading was aborted.';
+                            break;
+                        case 2:
+                            errorMessage += 'MEDIA_ERR_NETWORK: Network error occurred.';
+                            break;
+                        case 3:
+                            errorMessage += 'MEDIA_ERR_DECODE: Video decoding error.';
+                            break;
+                        case 4:
+                            errorMessage += 'MEDIA_ERR_SRC_NOT_SUPPORTED: Video format not supported or file not found.';
+                            break;
+                        default:
+                            errorMessage += 'Unknown error occurred.';
+                    }
+                }
+                
+                errorMessage += '\n\nTroubleshooting:\n';
+                errorMessage += '1. Check if your Google Drive file ID is correct\n';
+                errorMessage += '2. Make sure video is shared as "Anyone with the link"\n';
+                errorMessage += '3. Try opening this URL directly in browser:\n' + VIDEO_PATH;
+                
+                alert(errorMessage);
+                startButton.style.display = 'block';
             });
             
             video.addEventListener('progress', () => {
@@ -275,11 +330,12 @@
                     const duration = video.duration;
                     if (duration > 0) {
                         const bufferedPercent = (bufferedEnd / duration) * 100;
-                        console.log(`Video buffered: ${bufferedPercent.toFixed(1)}%`);
+                        console.log(`📊 Video buffered: ${bufferedPercent.toFixed(1)}%`);
                     }
                 }
             });
             
+            console.log('Starting video load...');
             video.load();
         }
         
