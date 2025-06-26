@@ -1,492 +1,134 @@
-<button id="startButton">
-            🚀 Start VR Experience
-        </button><!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>360° VR Video Experience</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: #000;
-            overflow: hidden;
-            font-family: 'Arial', sans-serif;
-        }
-        
-        #container {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-        }
-        
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px 25px;
-            border-radius: 50px;
-            backdrop-filter: blur(10px);
-        }
-        
-        button {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(5px);
-        }
-        
-        button:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.5);
-            transform: translateY(-2px);
-        }
-        
-        button:active {
-            transform: translateY(0);
-        }
-        
-        #playPause {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-        }
-        
-        #instructions {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 15px;
-            text-align: center;
-            z-index: 100;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        #startButton {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px 40px;
-            border: none;
-            border-radius: 15px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            z-index: 200;
-            transition: all 0.3s ease;
-        }
-        
-        #startButton:hover {
-            transform: translate(-50%, -50%) scale(1.05);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-        }
-        
-        #loadingScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #000428 0%, #004e92 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 150;
-            color: white;
-        }
-        
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid #ffffff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-    </style>
-</head>
-<body>
-    <div id="container">
-        <div id="loadingScreen" class="hidden">
-            <div class="spinner"></div>
-            <p>Loading your 360° experience...</p>
-        </div>
-        
+import React, { useEffect, useRef, useState } from 'react';
 
-        
-        <div id="instructions" class="hidden">
-            <p>🔄 Move your device or drag to look around • 📱 Works best on mobile<br>
-            <small>Large video file loading from Google Drive - please be patient</small></p>
+// A-Frame is loaded via a script tag in the HTML, so we don't import it directly here.
+// We expect 'AFRAME' to be globally available after the script loads.
+
+function App() {
+  const videoRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(true);
+
+  // Example 360 video URL. Replace this with your actual YouTube/Vimeo 360 video URL.
+  // Note: For YouTube/Vimeo, you usually need to get the direct video file URL or
+  // use their iframe embed, which might not work directly with A-Frame's <a-video> component.
+  // For A-Frame, it's best to use a direct MP4 URL that is 360-formatted (equirectangular).
+  // I'm using a placeholder and providing instructions.
+  const videoSource = "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4"; // Placeholder - REPLACE WITH YOUR 360 VIDEO URL
+
+  useEffect(() => {
+    // Dynamically load A-Frame script
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js';
+    script.async = true;
+    script.onload = () => {
+      console.log('A-Frame script loaded.');
+      // A-Frame components are registered globally, so we can now safely use them
+      // Ensure the scene is ready
+      const scene = document.querySelector('a-scene');
+      if (scene) {
+        scene.addEventListener('loaded', () => {
+          console.log('A-Frame scene loaded.');
+        });
+      }
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
+
+  const handleStartExperience = () => {
+    if (videoRef.current) {
+      // Attempt to play the video. Browsers might still block if not muted or user hasn't interacted enough.
+      // Setting muted to true for better autoplay chances.
+      videoRef.current.play().then(() => {
+        setIsPlaying(true);
+        setShowOverlay(false);
+      }).catch(error => {
+        console.error("Autoplay failed:", error);
+        // If autoplay fails, the user might need to click again or unmute.
+        // Provide a message to the user.
+        alert("Video autoplay blocked by browser. Please unmute or try again.");
+      });
+    }
+  };
+
+  return (
+    <div className="relative w-full h-screen flex flex-col items-center justify-center bg-gray-900 overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        {/* A-Frame scene for the 360 video */}
+        <a-scene embedded vr-mode-ui="enabled: false">
+          {/* Asset management: Preload the video */}
+          <a-assets>
+            <video
+              id="video360"
+              ref={videoRef}
+              crossOrigin="anonymous"
+              src={videoSource}
+              loop={true}
+              muted={true} // Start muted for better autoplay chances
+              playsInline={true} // Important for iOS
+              preload="auto"
+            ></video>
+          </a-assets>
+
+          {/* 360 Video Sphere */}
+          <a-videosphere src="#video360" rotation="0 180 0"></a-videosphere>
+
+          {/* Camera with look-controls for device orientation and mouse drag */}
+          {/* `look-controls` enables looking around with mouse drag on desktop and device motion on mobile */}
+          <a-entity camera look-controls="pointerLockEnabled: false"></a-entity>
+
+          {/* Optional: Add a simple sky for background if video isn't loaded */}
+          <a-sky color="#000"></a-sky>
+        </a-scene>
+      </div>
+
+      {/* Overlay for start button and instructions */}
+      {showOverlay && (
+        <div className="absolute inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-10 p-4">
+          <div className="bg-white rounded-xl p-8 shadow-2xl text-center max-w-lg mx-auto">
+            <h1 className="text-3xl font-bold text-gray-800 mb-4">Immersive VR Experience</h1>
+            <p className="text-gray-700 text-lg mb-6">
+              Welcome to your immersive journey!
+              <br />
+              Please click the button below to start the 360-degree video.
+              <br />
+              <strong className="text-red-600">Important: Replace the placeholder video URL with your own 360 video URL for the full experience!</strong>
+              <br />
+              (Make sure your video is in equirectangular format for 360 playback).
+            </p>
+            <button
+              onClick={handleStartExperience}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+            >
+              Start Experience
+            </button>
+            <p className="text-sm text-gray-500 mt-4">
+              Once started, move your phone around or drag your mouse to look around in the video.
+            </p>
+          </div>
         </div>
-        
-        <div id="controls" class="hidden">
-            <button id="playPause">▶️</button>
-            <button id="resetView">🎯 Reset View</button>
-            <button id="toggleGyro">📱 Gyro: OFF</button>
+      )}
+
+      {/* Control button for unmuting/muting if needed after start */}
+      {isPlaying && (
+        <div className="absolute bottom-4 right-4 z-20">
+          <button
+            onClick={() => {
+              if (videoRef.current) {
+                videoRef.current.muted = !videoRef.current.muted;
+              }
+            }}
+            className="bg-gray-800 hover:bg-gray-700 text-white py-2 px-4 rounded-full text-sm opacity-80"
+          >
+            {videoRef.current?.muted ? 'Unmute' : 'Mute'}
+          </button>
         </div>
+      )}
     </div>
+  );
+}
 
-    <script>
-        // GOOGLE DRIVE SETUP INSTRUCTIONS:
-        // 1. Upload your 360° video to Google Drive
-        // 2. Right-click → Share → Change to "Anyone with the link can view"
-        // 3. Copy the sharing link (https://drive.google.com/file/d/FILE_ID/view)
-        // 4. Extract the FILE_ID (long string between /d/ and /view)
-        // 5. Replace YOUR_FILE_ID below with your actual file ID
-        
-        const GOOGLE_DRIVE_FILE_ID = 'YOUR_FILE_ID';
-        const VIDEO_PATH = `https://drive.google.com/uc?export=download&id=${GOOGLE_DRIVE_FILE_ID}`;
-        
-        let scene, camera, renderer, sphere, video, texture;
-        let isPlaying = false;
-        let gyroEnabled = false;
-        let mouseX = 0, mouseY = 0;
-        let targetRotationX = 0, targetRotationY = 0;
-        let currentRotationX = 0, currentRotationY = 0;
-        
-        // Device orientation variables
-        let alpha = 0, beta = 0, gamma = 0;
-        let deviceOrientationSupported = false;
-        
-        const startButton = document.getElementById('startButton');
-        const playPauseBtn = document.getElementById('playPause');
-        const resetViewBtn = document.getElementById('resetView');
-        const toggleGyroBtn = document.getElementById('toggleGyro');
-        const instructions = document.getElementById('instructions');
-        const controls = document.getElementById('controls');
-        const loadingScreen = document.getElementById('loadingScreen');
-        
-        // Initialize Three.js scene
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.getElementById('container').appendChild(renderer.domElement);
-            
-            // Create sphere geometry (inverted for 360° viewing)
-            const geometry = new THREE.SphereGeometry(500, 60, 40);
-            geometry.scale(-1, 1, 1); // Invert sphere
-            
-            camera.position.set(0, 0, 0);
-        }
-        
-        // Load and setup video from Google Drive
-        function setupVideo() {
-            console.log('Setup video called');
-            console.log('File ID:', 1bLEotdGvu33yDNc1QaWZXbs4fzW8txjZ);
-            console.log('Video path:', VIDEO_PATH);
-            
-            if (GOOGLE_DRIVE_FILE_ID === 'YOUR_FILE_ID') {
-                alert('❌ Please replace YOUR_FILE_ID with your actual Google Drive file ID in the code!\n\nSteps:\n1. Upload video to Google Drive\n2. Share → Anyone with link\n3. Copy the file ID from the link\n4. Replace YOUR_FILE_ID in the code');
-                return;
-            }
-            
-            loadingScreen.classList.remove('hidden');
-            startButton.style.display = 'none';
-            console.log('Loading screen shown, start button hidden');
-            
-            video = document.createElement('video');
-            video.src = VIDEO_PATH;
-            video.crossOrigin = 'anonymous';
-            video.loop = true;
-            video.muted = true;
-            video.playsInline = true;
-            video.preload = 'metadata';
-            
-            console.log('Video element created with src:', video.src);
-            
-            video.addEventListener('loadstart', () => {
-                console.log('✅ Video loading started...');
-            });
-            
-            video.addEventListener('loadedmetadata', () => {
-                console.log('✅ Video metadata loaded');
-                console.log('Duration:', video.duration);
-                console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
-            });
-            
-            video.addEventListener('loadeddata', () => {
-                console.log('✅ Video data loaded, creating 3D scene...');
-                
-                texture = new THREE.VideoTexture(video);
-                texture.minFilter = THREE.LinearFilter;
-                texture.magFilter = THREE.LinearFilter;
-                texture.format = THREE.RGBFormat;
-                
-                const material = new THREE.MeshBasicMaterial({ map: texture });
-                sphere = new THREE.Mesh(new THREE.SphereGeometry(500, 60, 40), material);
-                sphere.geometry.scale(-1, 1, 1);
-                scene.add(sphere);
-                
-                loadingScreen.classList.add('hidden');
-                instructions.classList.remove('hidden');
-                controls.classList.remove('hidden');
-                
-                console.log('✅ 3D scene created, UI updated');
-                
-                // Auto-play the video
-                video.play().then(() => {
-                    console.log('✅ Video auto-play successful');
-                    isPlaying = true;
-                    playPauseBtn.textContent = '⏸️';
-                }).catch((error) => {
-                    console.log('❌ Auto-play failed:', error);
-                    playPauseBtn.textContent = '▶️';
-                });
-                
-                animate();
-            });
-            
-            video.addEventListener('canplay', () => {
-                console.log('✅ Video can start playing');
-            });
-            
-            video.addEventListener('canplaythrough', () => {
-                console.log('✅ Video can play through without buffering');
-            });
-            
-            video.addEventListener('error', (e) => {
-                console.error('❌ Video error:', e);
-                console.error('Error details:', video.error);
-                loadingScreen.classList.add('hidden');
-                
-                let errorMessage = '❌ Error loading video from Google Drive.\n\n';
-                
-                if (video.error) {
-                    switch(video.error.code) {
-                        case 1:
-                            errorMessage += 'MEDIA_ERR_ABORTED: Video loading was aborted.';
-                            break;
-                        case 2:
-                            errorMessage += 'MEDIA_ERR_NETWORK: Network error occurred.';
-                            break;
-                        case 3:
-                            errorMessage += 'MEDIA_ERR_DECODE: Video decoding error.';
-                            break;
-                        case 4:
-                            errorMessage += 'MEDIA_ERR_SRC_NOT_SUPPORTED: Video format not supported or file not found.';
-                            break;
-                        default:
-                            errorMessage += 'Unknown error occurred.';
-                    }
-                }
-                
-                errorMessage += '\n\nTroubleshooting:\n';
-                errorMessage += '1. Check if your Google Drive file ID is correct\n';
-                errorMessage += '2. Make sure video is shared as "Anyone with the link"\n';
-                errorMessage += '3. Try opening this URL directly in browser:\n' + VIDEO_PATH;
-                
-                alert(errorMessage);
-                startButton.style.display = 'block';
-            });
-            
-            video.addEventListener('progress', () => {
-                if (video.buffered.length > 0) {
-                    const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-                    const duration = video.duration;
-                    if (duration > 0) {
-                        const bufferedPercent = (bufferedEnd / duration) * 100;
-                        console.log(`📊 Video buffered: ${bufferedPercent.toFixed(1)}%`);
-                    }
-                }
-            });
-            
-            console.log('Starting video load...');
-            video.load();
-        }
-        
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            // Smooth camera rotation
-            currentRotationX += (targetRotationX - currentRotationX) * 0.05;
-            currentRotationY += (targetRotationY - currentRotationY) * 0.05;
-            
-            if (gyroEnabled && deviceOrientationSupported) {
-                // Use device orientation for rotation
-                camera.rotation.x = beta * Math.PI / 180;
-                camera.rotation.y = alpha * Math.PI / 180;
-                camera.rotation.z = gamma * Math.PI / 180;
-            } else {
-                // Use mouse/touch for rotation
-                camera.rotation.y = currentRotationX;
-                camera.rotation.x = currentRotationY;
-            }
-            
-            renderer.render(scene, camera);
-        }
-        
-        // Mouse controls
-        let isMouseDown = false;
-        let lastMouseX = 0, lastMouseY = 0;
-        
-        renderer.domElement.addEventListener('mousedown', (e) => {
-            isMouseDown = true;
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-        });
-        
-        renderer.domElement.addEventListener('mousemove', (e) => {
-            if (!isMouseDown) return;
-            
-            const deltaX = e.clientX - lastMouseX;
-            const deltaY = e.clientY - lastMouseY;
-            
-            targetRotationX -= deltaX * 0.005;
-            targetRotationY -= deltaY * 0.005;
-            targetRotationY = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationY));
-            
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-        });
-        
-        renderer.domElement.addEventListener('mouseup', () => {
-            isMouseDown = false;
-        });
-        
-        // Touch controls
-        let lastTouchX = 0, lastTouchY = 0;
-        
-        renderer.domElement.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            lastTouchX = e.touches[0].clientX;
-            lastTouchY = e.touches[0].clientY;
-        });
-        
-        renderer.domElement.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const deltaX = e.touches[0].clientX - lastTouchX;
-            const deltaY = e.touches[0].clientY - lastTouchY;
-            
-            targetRotationX -= deltaX * 0.005;
-            targetRotationY -= deltaY * 0.005;
-            targetRotationY = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationY));
-            
-            lastTouchX = e.touches[0].clientX;
-            lastTouchY = e.touches[0].clientY;
-        });
-        
-        // Device orientation
-        function handleDeviceOrientation(e) {
-            alpha = e.alpha || 0;
-            beta = e.beta || 0;
-            gamma = e.gamma || 0;
-        }
-        
-        // Request device orientation permission (iOS 13+)
-        function requestOrientationPermission() {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response === 'granted') {
-                            window.addEventListener('deviceorientation', handleDeviceOrientation);
-                            deviceOrientationSupported = true;
-                        }
-                    });
-            } else if (window.DeviceOrientationEvent) {
-                window.addEventListener('deviceorientation', handleDeviceOrientation);
-                deviceOrientationSupported = true;
-            }
-        }
-        
-        // Event listeners
-        startButton.addEventListener('click', () => {
-            setupVideo();
-            // Request orientation permission when starting
-            if (/Mobi|Android/i.test(navigator.userAgent)) {
-                requestOrientationPermission();
-            }
-        });
-        
-        playPauseBtn.addEventListener('click', () => {
-            if (video) {
-                if (isPlaying) {
-                    video.pause();
-                    playPauseBtn.textContent = '▶️';
-                } else {
-                    video.play();
-                    playPauseBtn.textContent = '⏸️';
-                }
-                isPlaying = !isPlaying;
-            }
-        });
-        
-        resetViewBtn.addEventListener('click', () => {
-            targetRotationX = 0;
-            targetRotationY = 0;
-            currentRotationX = 0;
-            currentRotationY = 0;
-        });
-        
-        toggleGyroBtn.addEventListener('click', () => {
-            if (!deviceOrientationSupported) {
-                requestOrientationPermission();
-            }
-            gyroEnabled = !gyroEnabled;
-            toggleGyroBtn.textContent = `📱 Gyro: ${gyroEnabled ? 'ON' : 'OFF'}`;
-        });
-        
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            if (camera && renderer) {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            }
-        });
-        
-        // Initialize
-        init();
-        
-        // Auto-request orientation permission on mobile
-        if (/Mobi|Android/i.test(navigator.userAgent)) {
-            setTimeout(requestOrientationPermission, 1000);
-        }
-    </script>
-</body>
-</html>
+export default App;
